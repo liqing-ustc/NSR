@@ -1,0 +1,21 @@
+project: ANS
+program: train.py
+method: grid
+metric:
+  name: test/result_acc/avg
+  goal: maximize
+parameters:
+  save_model:
+    value: 1
+  perception:
+    value: 0 
+  syntax:
+    value: 0 
+  semantics:
+    value: 0
+  epochs:
+    value: 100
+  epochs_eval:
+    value: 10
+  seed:
+    values: [0,1,2]

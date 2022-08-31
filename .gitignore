@@ -1,0 +1,11 @@
+*__pycache__*
+.vscode/
+.ipynb_checkpoints/
+compressionMessages/
+outputs/
+log.txt
+*.p
+tmp/
+bak/
+wandb/
+data/
