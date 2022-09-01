@@ -24,7 +24,7 @@ from dreamcoder.domains.hint.hintPrimitives import McCarthyPrimitives
 from dreamcoder.domains.hint import hintPrimitives
 from dreamcoder.domains.hint.main import main, list_options, LearnedFeatureExtractor
 
-from utils import SYMBOLS, EMPTY_VALUE, MISSING_VALUE, SYM2PROG
+from utils import SYMBOLS, EMPTY_VALUE, MISSING_VALUE, SYM2PROG, ID2SYM, SYM2ARITY
 
 class ProgramWrapper(object):
     def __init__(self, prog):
@@ -139,10 +139,10 @@ class Semantics(object):
         self.idx = idx
         self.examples = []
         self.program = program or NULLProgram()
-        self.arity = 2 if self.idx >= 10 and self.idx < 14 else 0
+        self.arity = SYM2ARITY[ID2SYM(idx)]
         self.solved = False
         self.fewshot = fewshot
-        self.learnable = False if self.idx in [14, 15] else learnable # do not learn parentheses
+        self.learnable = learnable
         self.likelihood = 0. if self.learnable else 1.
         self.cache = {}
 
@@ -201,9 +201,6 @@ class Semantics(object):
             self.solved = False
 
     def __call__(self, inputs):
-        if self.idx in [14, 15]: 
-            return EMPTY_VALUE if len(inputs) == 0 else MISSING_VALUE # parentheses
-
         inputs = [x for x in inputs if x != EMPTY_VALUE]
         inputs = tuple(inputs)
         if self.likelihood > 0.8:
