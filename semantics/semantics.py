@@ -20,9 +20,8 @@ from dreamcoder.recognition import RecurrentFeatureExtractor
 from dreamcoder.program import Program, Invented, Primitive
 from dreamcoder.frontier import Frontier, FrontierEntry
 
-from dreamcoder.domains.hint.hintPrimitives import McCarthyPrimitives
-from dreamcoder.domains.hint import hintPrimitives
-from dreamcoder.domains.hint.main import main, list_options, LearnedFeatureExtractor
+from bin.scan import primitives
+from dreamcoder.domains.hint.main import list_options, LearnedFeatureExtractor
 
 from utils import SYMBOLS, EMPTY_VALUE, MISSING_VALUE, SYM2PROG, ID2SYM, SYM2ARITY
 
@@ -40,16 +39,16 @@ class ProgramWrapper(object):
     def __call__(self, *inputs):
         if len(inputs) != self.arity or MISSING_VALUE in inputs:
             return MISSING_VALUE
-        if inputs in self.cache:
-            return self.cache[inputs]
+        if repr(inputs) in self.cache:
+            return self.cache[repr(inputs)]
         try:
             fn = self.fn
             for x in inputs:
                 fn = fn(x)
-        except RecursionError as e:
+        except (TypeError, RecursionError, IndexError) as e:
             print(repr(e))
             fn = MISSING_VALUE
-        self.cache[inputs] = fn
+        self.cache[repr(inputs)] = fn
         return fn
 
     def __eq__(self, prog): # only used for removing equivalent semantics
@@ -79,11 +78,7 @@ class ProgramWrapper(object):
     def evaluate(self, examples, store_y=True): 
         ys = []
         for exp in examples:
-            try:
-                y = self(*exp)
-            except (TypeError, RecursionError) as e:
-                print(repr(e))
-                y = MISSING_VALUE
+            y = self(*exp)
             ys.append(y)
         return ys
 
@@ -100,6 +95,7 @@ class ProgramWrapper(object):
 
         candidates = []
         for xs, y in self.cache.items():
+            xs = eval(xs)
             if y in output_list and equal(xs, inputs, i):
                 candidates.append(xs[i])
         return candidates
@@ -126,12 +122,12 @@ class NULLProgram(object):
         return []
 
 def compute_likelihood(program, examples=None):
-    if examples is None:
+    if not examples:
         return 0., None
     else:
         pred = program.evaluate([e[0] for e in examples], store_y=False)
-        gt = np.array([e[1] for e in examples])
-        res = pred == gt
+        gt = [e[1] for e in examples]
+        res = [x == y for x, y in zip(pred, gt)]
         return np.mean(res), np.array(res)
 
 class Semantics(object):
@@ -147,16 +143,13 @@ class Semantics(object):
         self.cache = {}
 
     def update_examples(self, examples):
-        if len(examples) < 10 and not self.fewshot:
-            self.clear()
-            return
-
         examples = [x[:2] for x in examples if len(x[0]) == self.arity] 
         for x, ys in self.cache.items():
             for y in ys:
                 ys[y] *= 0.5
         
         for x, y in examples:
+            x, y = repr(x), repr(y)
             if x not in self.cache:
                 self.cache[x] = {}
             if y not in self.cache[x]:
@@ -165,10 +158,11 @@ class Semantics(object):
 
         
         conf_examples = []
-        conf_thres = 5
+        conf_thres = 1
         for x, ys in self.cache.items():
             y, conf = max(ys.items(), key=lambda k: k[1])
             if conf >= conf_thres and (conf / sum(ys.values())) > 0.5: # the most confident y occupies 80% of all possible prediction
+                x, y = eval(x), eval(y)
                 conf_examples.append((x, y))
         self.examples = conf_examples
 
@@ -188,7 +182,6 @@ class Semantics(object):
             self.program = program
             self.likelihood = likelihood
             self.check_solved()
-        # self.program.cache.update({xs:y for xs, y in self.examples})
     
     def check_solved(self):
         if self.program is None:
@@ -202,30 +195,30 @@ class Semantics(object):
 
     def __call__(self, inputs):
         inputs = [x for x in inputs if x != EMPTY_VALUE]
-        inputs = tuple(inputs)
         if self.likelihood > 0.8:
             if isinstance(self.program, NULLProgram) and len(inputs) > 0:
                 return MISSING_VALUE
-            inputs = [x for x in inputs if x != EMPTY_VALUE]
             return self.program(*inputs)
-        elif inputs in self.cache:
-            ys = self.cache[inputs]
+        elif repr(inputs) in self.cache:
+            ys = self.cache[repr(inputs)]
             candidates = [y[0] for y in ys.items()]
             p = [y[1] for y in ys.items()]
             p = np.array(p) / sum(p)
-            output = int(np.random.choice(candidates, p=p))
+            id = int(np.random.choice(len(p), p=p))
+            output = candidates[id]
+            output = eval(output)
             return output
 
         return MISSING_VALUE
 
     def make_task(self):
-        min_examples = 10 if self.arity is not None and self.arity > 0 else 0
+        min_examples = 1
         min_examples = min_examples if not self.fewshot else 0
         max_examples = 100
         examples = self.examples
         if len(examples) < min_examples or self.solved or not self.learnable:
             return None
-        task_type = arrow(*([tint]*(self.arity + 1)))
+        task_type = arrow(*([tlist(tint)]*(self.arity + 1)))
         if len(examples) > max_examples:
             wrong_examples = [e for e, r in zip(examples, self.res) if not r]
             right_examples = [e for e, r in zip(examples, self.res) if r]
@@ -251,8 +244,17 @@ class Semantics(object):
         candidates = []
         for xs, y in self.cache.items():
             y = sorted(y.items(), key = lambda p: p[1], reverse=True)[0][0]
+            xs, y = eval(xs), eval(y)
             if y in output_list and equal(xs, inputs, i):
                 candidates.append(xs[i])
+        
+        # test if we can reach the target by make it an empty list
+        inputs = inputs[:]
+        empty = []
+        inputs[i] = empty
+        if self(inputs) in output_list:
+            candidates.append(empty)
+
         return candidates
 
     def clear(self):
@@ -308,7 +310,7 @@ class DreamCoder(object):
         args.pop("maxTasks")
         args.pop("split")
         
-        self.primitives = McCarthyPrimitives()
+        self.primitives = primitives
         if not config.Y_combinator:
             self.primitives = [x for x in self.primitives if 'fix' not in x.name]
         baseGrammar = Grammar.uniform(self.primitives)
@@ -388,7 +390,7 @@ class DreamCoder(object):
             self._print_semantics()
             return 
         self._print_tasks(tasks)
-        self.update_grammar()
+        # self.update_grammar()
         print(self.grammar)
         # print(self.allFrontiers)
         self.rescore_frontiers(tasks)
@@ -450,7 +452,7 @@ class DreamCoder(object):
 
     def _print_tasks(self, tasks):
         for task in tasks:
-            print("Symbol-%02d (%s), Samples: %3d, "%(int(task.name), task.request, len(task.examples)), Counter(task.examples).most_common(10))
+            print("Symbol-%02d (%s), Samples: %3d, "%(int(task.name), task.request, len(task.examples)), task.examples[:10])
 
         # json.dump([t.examples for t in tasks], open('outputs/tasks.json', 'w'))
 

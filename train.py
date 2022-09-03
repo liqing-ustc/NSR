@@ -96,7 +96,7 @@ def evaluate(model, dataloader, n_steps=1, log_prefix='val'):
 
     res_pred_all = [y for x in res_pred_all for y in x]
     res_all = [y for x in res_all for y in x]
-    result_acc = np.mean([0 if x is MISSING_VALUE else ' '.join(x) == ' '.join(y)  for x, y in zip(res_pred_all, res_all)])
+    result_acc = np.mean([x == y  for x, y in zip(res_pred_all, res_all)])
     print("Percentage of missing result: %.2f"%(np.mean([x is MISSING_VALUE for x in res_pred_all]) * 100))
     
 
@@ -116,10 +116,7 @@ def evaluate(model, dataloader, n_steps=1, log_prefix='val'):
     wandb.log({f'{log_prefix}/{k}': v for k, v in metrics.items()})
     
     print("error cases:")
-    errors = []
-    for i in range(len(res_all)):
-        if res_pred_all[i] is MISSING_VALUE or ' '.join(res_pred_all[i]) != ' '.join(res_all[i]):
-            errors.append(i)
+    errors = [i for i in range(len(res_all)) if res_pred_all[i] != res_all[i]]
     for i in errors[:3]:
         expr = ' '.join(expr_all[i])
         expr_pred = ' '.join(map(ID2SYM, expr_pred_all[i]))
@@ -147,11 +144,10 @@ def train(model, args, st_epoch=0):
     if args.curriculum:
         curriculum_strategy = dict([
             # (0, 7)
-            (0, 3),
-            (20, 7),
-            (40, 11),
-            (60, 15),
-            (80, float('inf')),
+            # (0, 3),
+            (0, 7),
+            (10, 15),
+            (20, float('inf')),
         ])
         print("Curriculum:", sorted(curriculum_strategy.items()))
         for e, l in sorted(curriculum_strategy.items(), reverse=True):
@@ -191,7 +187,7 @@ def train(model, args, st_epoch=0):
                     res = sample['res']
                     res_pred, sent_pred, head_pred = model.deduce(sample)
                     model.abduce(res)
-                    acc = np.mean([0 if x is MISSING_VALUE else ' '.join(x) == ' '.join(y)  for x, y in zip(res_pred, res)])
+                    acc = np.mean([x == y  for x, y in zip(res_pred, res)])
                     train_result_acc.append(acc)
 
                     sent_pred = [y for x in sent_pred for y in x]

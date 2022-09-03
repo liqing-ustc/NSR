@@ -250,7 +250,7 @@ class AST: # Abstract Syntax Tree
         inputs = node.inputs()
         if EMPTY_VALUE in target and len(inputs) > 0:
             return []
-        if len(inputs) > 0 and (MISSING_VALUE in inputs or (np.array(inputs) == EMPTY_VALUE).all()):
+        if len(inputs) > 0 and (MISSING_VALUE in inputs):
             return []
 
         new_node = Node(0,0,0)
@@ -416,7 +416,7 @@ class Jointer:
             dataset = [[] for _ in range(len(self.semantics.semantics))]
             for ast in self.buffer:
                 for node in ast.nodes:
-                    xs = tuple([x.res() for x in node.children if x.res() != EMPTY_VALUE])
+                    xs = [x.res() for x in node.children if x.res() != EMPTY_VALUE]
                     y = node.res()
                     dataset[node.symbol].append((xs, y))
             self.semantics.learn(dataset)

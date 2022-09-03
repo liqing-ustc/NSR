@@ -271,6 +271,8 @@ class Parser(object):
         return UAS
 
     def learn(self, dataset, n_iters=100):
+        if len(dataset) == 0:
+            return
         train_data = self.create_instances([{'word': x.sentence, 'head': x.head} for x in dataset])
 
         batch_size = 1024
