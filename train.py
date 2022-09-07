@@ -1,4 +1,3 @@
-from utils import *
 import time
 from tqdm import tqdm, trange
 from collections import Counter, OrderedDict
@@ -9,7 +8,7 @@ pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)
 
-from data.scan import SCAN, SCAN_collate
+from datasets import get_dataset, MISSING_VALUE
 from jointer import Jointer
 
 import torch
@@ -24,7 +23,8 @@ import os
 
 def parse_args():
     parser = argparse.ArgumentParser('Neural-Symbolic Recursive Machine')
-    parser.add_argument('--wandb', type=str, default='nsr_scan', help='the project name for wandb.')
+    parser.add_argument('--wandb', type=str, default='NSR', help='the project name for wandb.')
+    parser.add_argument('--dataset', default='hint', choices=['scan', 'pcfg', 'hint'], help='the dataset name.')
     parser.add_argument('--resume', type=str, default=None, help='Resumes training from checkpoint.')
     parser.add_argument('--perception_pretrain', type=str, help='initialize the perception from pretrained models.',
                         default='perception/pretrained_model/model_78.2.pth.tar')
@@ -48,6 +48,7 @@ def parse_args():
     parser.add_argument('--epochs_eval', type=int, default=10, help='how many epochs per evaluation')
 
     args = parser.parse_args()
+    args.wandb = args.wandb + '-' + args.dataset
     args.save_model = args.save_model == '1'
     args.curriculum = args.curriculum == '1'
     args.perception = args.perception == '1'
@@ -71,8 +72,8 @@ def evaluate(model, dataloader, n_steps=1, log_prefix='val'):
     res_all = []
     res_pred_all = []
     
-    expr_all = []
-    expr_pred_all = []
+    sent_all = []
+    sent_pred_all = []
 
     dep_all = []
     dep_pred_all = []
@@ -82,33 +83,30 @@ def evaluate(model, dataloader, n_steps=1, log_prefix='val'):
     with torch.no_grad():
         for sample in tqdm(dataloader):
             res = sample['res']
-            expr = sample['expr']
+            sent = sample['sentence']
             dep = sample['head']
 
-            res_preds, expr_preds, dep_preds = model.deduce(sample, n_steps=n_steps)
+            res_preds, sent_preds, dep_preds = model.deduce(sample, n_steps=n_steps)
             
-            res_pred_all.append(res_preds)
-            res_all.append(res)
-            expr_pred_all.extend(expr_preds)
-            expr_all.extend(expr)
+            res_pred_all.extend(res_preds)
+            res_all.extend(res)
+            sent_pred_all.extend(sent_preds)
+            sent_all.extend(sent)
             dep_pred_all.extend(dep_preds)
             dep_all.extend(dep)
 
-    res_pred_all = [y for x in res_pred_all for y in x]
-    res_all = [y for x in res_all for y in x]
-    result_acc = np.mean([x == y  for x, y in zip(res_pred_all, res_all)])
-    print("Percentage of missing result: %.2f"%(np.mean([x is MISSING_VALUE for x in res_pred_all]) * 100))
+    pred = res_pred_all
+    gt = res_all
+    result_acc = np.mean([x == y  for x, y in zip(pred, gt)])
+    print("Percentage of missing result: %.2f"%(np.mean([x is MISSING_VALUE for x in pred]) * 100))
     
-
-    pred = [y for x in expr_pred_all for y in x]
-    gt = [SYM2ID(y) for x in expr_all for y in x]
-    mask = np.array([0 if x == SYM2ID('(') or x == SYM2ID(')')  else 1 for x in gt], dtype=bool)
-    assert len(gt) == len(pred)
+    pred = [y for x in sent_pred_all for y in x]
+    gt = [y for x in sent_all for y in x]
     perception_acc = np.mean([x == y for x,y in zip(pred, gt)])
 
     pred = [y for x in dep_pred_all for y in x]
     gt = [y for x in dep_all for y in x]
-    head_acc = np.mean(np.array(pred)[mask] == np.array(gt)[mask])
+    head_acc = np.mean(np.array(pred) == np.array(gt))
 
     metrics['result_acc/avg'] = result_acc
     metrics['perception_acc/avg'] = perception_acc
@@ -117,15 +115,18 @@ def evaluate(model, dataloader, n_steps=1, log_prefix='val'):
     
     print("error cases:")
     errors = [i for i in range(len(res_all)) if res_pred_all[i] != res_all[i]]
+    if len(errors) == 0:
+        errors = [i for i in range(len(res_all)) if dep_pred_all[i] != dep_all[i]]
     for i in errors[:3]:
-        expr = ' '.join(expr_all[i])
-        expr_pred = ' '.join(map(ID2SYM, expr_pred_all[i]))
+        expr = ' '.join([model.config.domain.i2w[x] for x in sent_all[i]])
+        expr_pred = ' '.join([model.config.domain.i2w[x] for x in sent_pred_all[i]])
         print(expr)
-        print(dep_all[i], dep_pred_all[i])
+        print(expr_pred)
+        print(dep_all[i])
+        print(dep_pred_all[i])
         print(res_all[i])
         print(res_pred_all[i])
         print()
-        # print(expr, dep_all[i], dep_pred_all[i], res_all[i], res_pred_all[i])
         # tree = draw_parse(expr_pred, dep_pred_all[i])
         # tree.draw()
 
@@ -136,18 +137,18 @@ def train(model, args, st_epoch=0):
     best_acc = 0.0
     batch_size = 32
     train_dataloader = torch.utils.data.DataLoader(args.train_set, batch_size=batch_size,
-                         shuffle=True, num_workers=4, collate_fn=SCAN_collate)
+                         shuffle=True, num_workers=4, collate_fn=args.domain.collate)
     eval_dataloader = torch.utils.data.DataLoader(args.val_set, batch_size=batch_size,
-                         shuffle=False, num_workers=4, collate_fn=SCAN_collate)
+                         shuffle=False, num_workers=4, collate_fn=args.domain.collate)
     
     max_len = float("inf")
     if args.curriculum:
         curriculum_strategy = dict([
             # (0, 7)
             # (0, 3),
-            (0, 7),
-            (10, 15),
-            (20, float('inf')),
+            (0, 10),
+            (20, 20),
+            (40, float('inf')),
         ])
         print("Curriculum:", sorted(curriculum_strategy.items()))
         for e, l in sorted(curriculum_strategy.items(), reverse=True):
@@ -156,7 +157,7 @@ def train(model, args, st_epoch=0):
                 break
         train_set.filter_by_len(max_len=max_len)
         train_dataloader = torch.utils.data.DataLoader(train_set, batch_size=batch_size,
-                            shuffle=True, num_workers=4, collate_fn=SCAN_collate)
+                            shuffle=True, num_workers=4, collate_fn=args.domain.collate)
     
     ##########evaluate init model###########
     perception_acc, head_acc, result_acc = evaluate(model, eval_dataloader)
@@ -168,7 +169,7 @@ def train(model, args, st_epoch=0):
             max_len = curriculum_strategy[epoch]
             train_set.filter_by_len(max_len=max_len)
             train_dataloader = torch.utils.data.DataLoader(train_set, batch_size=batch_size,
-                                shuffle=True, num_workers=4, collate_fn=SCAN_collate)
+                                shuffle=True, num_workers=4, collate_fn=args.domain.collate)
             if len(train_dataloader) == 0:
                 continue
 
@@ -197,8 +198,7 @@ def train(model, args, st_epoch=0):
 
                     head_pred = [y for x in head_pred for y in x]
                     head = [y for x in sample['head'] for y in x]
-                    mask = np.array([0 if x == SYM2ID('(') or x == SYM2ID(')')  else 1 for x in sent], dtype=bool)
-                    acc = np.mean(np.array(head_pred)[mask] == np.array(head)[mask])
+                    acc = np.mean(np.array(head_pred) == np.array(head))
                     train_head_acc.append(acc)
 
                     n_samples += len(res)
@@ -241,7 +241,7 @@ def train(model, args, st_epoch=0):
     print('-' * 30)
     print('Evaluate on test set...')
     eval_dataloader = torch.utils.data.DataLoader(args.test_set, batch_size=batch_size,
-                         shuffle=False, num_workers=4, collate_fn=SCAN_collate)
+                         shuffle=False, num_workers=4, collate_fn=args.domain.collate)
     perception_acc, head_acc, result_acc = evaluate(model, eval_dataloader, n_steps, log_prefix='test')
     print('{} (Perception Acc={:.2f}, Head Acc={:.2f}, Result Acc={:.2f})'.format('test', 100*perception_acc, 100*head_acc, 100*result_acc))
 
@@ -264,13 +264,15 @@ if __name__ == "__main__":
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
 
-
+    domain = get_dataset(args.dataset)
+    args.domain = domain
     model = Jointer(args)
-    model.to(DEVICE)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
 
-    train_set = SCAN('train', n_sample=args.train_size)
-    val_set = SCAN('test')
-    test_set = SCAN('test')
+    train_set = domain('train', n_sample=args.train_size)
+    val_set = domain('val')
+    test_set = domain('test')
     print('train:', len(train_set), 'val:', len(val_set), 'test:', len(test_set))
 
     st_epoch = 0
@@ -280,7 +282,6 @@ if __name__ == "__main__":
             st_epoch = 0
 
 
-    print(args)
     model.print()
     wandb.log({'train_examples': len(train_set)})
 

@@ -1,7 +1,9 @@
 from .parser import Parser, PartialParse
 
 def build(config):
-    model = Parser()
+    n_tokens = len(config.domain.i2w)
+    i2arity = [config.domain.sym2arity[config.domain.i2w[i]] for i in range(n_tokens)]
+    model = Parser(n_tokens, i2arity)
     return model
 
 def convert_trans2dep(transitions):

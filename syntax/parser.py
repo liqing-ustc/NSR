@@ -13,14 +13,7 @@ import numpy as np
 import math
 import random
 
-NULL = '<NULL>'
-try:
-    from utils import SYMBOLS
-    from .general_utils import minibatches
-    TOKENS = SYMBOLS + [NULL]
-except ImportError:
-    from general_utils import minibatches
-    TOKENS = list('0123456789+-*/!') + [NULL]
+from .general_utils import minibatches
 
 TRANSITIONS = ['L', 'R', 'S'] # Left-Arc, Right-Arc, Shift 
 TRAN2ID = {t: i for (i, t) in enumerate(TRANSITIONS)}
@@ -68,12 +61,12 @@ class ParserModel(nn.Module):
 
 class Parser(object):
     """Contains everything needed for transition-based dependency parsing except for the model"""
-    def __init__(self):
+    def __init__(self, n_tokens, i2arity=None):
 
         self.n_trans = len(TRANSITIONS)
         self.n_features = 18
-        self.n_tokens = len(TOKENS)
-        self.tok2id = {v: k for (k, v) in enumerate(TOKENS)}
+        self.n_tokens = n_tokens + 1 # 1 for NULL
+        self.i2arity = i2arity
 
         self.model = ParserModel(n_tokens=self.n_tokens, n_features=self.n_features)
         self.device = torch.device('cpu')
@@ -103,21 +96,11 @@ class Parser(object):
 
     def extend(self, n):
         self.model.extend(n)
-        TOKENS = SYMBOLS + [NULL]
-        self.n_tokens = len(TOKENS)
-        self.tok2id = {v: k for (k, v) in enumerate(TOKENS)}
+        self.n_tokens += n
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-4, amsgrad=True)
 
     def __call__(self, sentences):
         return self.parse(sentences)
-
-    def vectorize(self, examples):
-        vec_examples = []
-        for ex in examples:
-            word = [self.tok2id[w] for w in ex['expr']]
-            head = ex['head']
-            vec_examples.append({'word': word, 'head': head})
-        return vec_examples
 
     def extract_features(self, stack, buf, arcs, sent):
         """ extract features for current state, used by neural network to predict next action,
@@ -130,7 +113,7 @@ class Parser(object):
             return sorted([arc[1] for arc in arcs if arc[0] == k and arc[1] > k],
                           reverse=True)
 
-        null_idx = self.tok2id[NULL]
+        null_idx = self.n_tokens - 1 # the last one is NULL
         features = [null_idx] * (3 - len(stack)) + [sent[x] for x in stack[-3:]]
         features += [sent[x] for x in buf[:3]] + [null_idx] * (3 - len(buf))
         for i in range(2):
@@ -205,15 +188,23 @@ class Parser(object):
 
         return all_instances
 
-    def legal_labels(self, stack, buf):
+    def legal_labels(self, stack, buf, arities=None):
+        def verify_arity():
+            if not arities: return True
+            # the case that shift is not feasible: 1. stack is not empty; 2. the first element of stack has zero arity;
+            # 3. the buffer has outstanding elements, i.e., len(buf) - sum(arities[-len(buf):]) > 0
+            return not (stack and arities[stack[-1]] == 0 and len(buf) - sum(arities[-len(buf):]) > 0)
+
         labels = ([1] if len(stack) >= 2 else [0]) # left-arc
         labels += ([1] if len(stack) >= 2 else [0]) # right-arc
-        labels += [1] if len(buf) > 0 else [0] # shift
+        labels += [1] if len(buf) > 0 and verify_arity() else [0] # shift
+        if sum(labels) == 0:
+            labels[2] = 1 # make it shift if both left/right arc are not feasible
         return labels
 
     def parse(self, sentences, batch_size=5000):
         parses = []
-        partial_parses = [PartialParse(sen) for sen in sentences]
+        partial_parses = [PartialParse(sen, self.i2arity) for sen in sentences]
         unfinished_parses = partial_parses[:]
         while unfinished_parses:
             minibatch_parses = unfinished_parses[:batch_size]
@@ -240,7 +231,7 @@ class Parser(object):
         mb_x = [self.extract_features(p.stack, p.buffer, p.dependencies, p.sentence) for p in partial_parses]
         mb_x = np.array(mb_x).astype('int32')
         mb_x = torch.from_numpy(mb_x).long().to(self.device)
-        mb_l = [self.legal_labels(p.stack, p.buffer) for p in partial_parses]
+        mb_l = [self.legal_labels(p.stack, p.buffer, p.arities) for p in partial_parses]
 
         logits = self.model(mb_x)
         probs = nn.functional.softmax(logits, dim=-1)
@@ -294,12 +285,13 @@ class Parser(object):
                 self.optimizer.step()
 
 class PartialParse(object):
-    def __init__(self, sentence):
+    def __init__(self, sentence, i2arity=None):
         """Initializes this partial parse.
         @param sentence (list of str): The sentence to be parsed as a list of words.
                                         Your code should not modify the sentence.
         """
         self.sentence = sentence
+        self.arities = [i2arity[i] for i in sentence] if i2arity else None
         self.stack = [] 
         self.buffer = list(range(len(sentence)))
         self.dependencies = []
@@ -325,6 +317,8 @@ class PartialParse(object):
         elif transition == 2: # Shift
             self.stack.append(self.buffer.pop(0))
         self.transitions.append(transition)
+        if self.arities and transition in [0, 1]:
+            self.arities[d[0]] -= 1
         self.probs.append(prob)
         if len(self.buffer) == 0 and len(self.stack) == 1:
             self.finish = True

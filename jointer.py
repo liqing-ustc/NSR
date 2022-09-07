@@ -4,7 +4,7 @@ import numpy as np
 from copy import deepcopy
 import sys
 from func_timeout import func_timeout, FunctionTimedOut
-from utils import DEVICE, SYMBOLS, EMPTY_VALUE, MISSING_VALUE
+from datasets import EMPTY_VALUE, MISSING_VALUE
 from collections import Counter, namedtuple
 from time import time
 import torch
@@ -73,7 +73,7 @@ class Node:
         return self._res
 
     def inputs(self):
-        return [x.res() for x in self.children]
+        return tuple([x.res() for x in self.children])
     
     def copy(self, node):
         self.index = node.index
@@ -179,7 +179,7 @@ class AST: # Abstract Syntax Tree
     def abduce_perception(self, node, target):
         changes = []
         probs = self.sent_probs[node.index]
-        for sym in range(len(SYMBOLS)):
+        for sym in range(len(probs)):
             if sym == node.symbol:
                 continue
             smt = self.semantics[sym]
@@ -332,7 +332,7 @@ class Jointer:
             sentences = sample['sentence']
             sent_probs = []
             for sent, l in zip(sentences, lengths):
-                probs = np.zeros((l, len(SYMBOLS)))
+                probs = np.zeros((l, len(config.domain.i2w)))
                 probs[range(l), sent] = 1
                 sent_probs.append(probs)
         else:
@@ -416,34 +416,9 @@ class Jointer:
             dataset = [[] for _ in range(len(self.semantics.semantics))]
             for ast in self.buffer:
                 for node in ast.nodes:
-                    xs = [x.res() for x in node.children if x.res() != EMPTY_VALUE]
+                    xs = tuple([x.res() for x in node.children if x.res() != EMPTY_VALUE])
                     y = node.res()
                     dataset[node.symbol].append((xs, y))
             self.semantics.learn(dataset)
 
         self.clear_buffer()
-
-if __name__ == '__main__':
-    # from utils import SEMANTICS
-    # sentences = ['5!-7-4', '1+5!*8', '8*9!+5+1/9/3!*9*5']
-    # head = [[1, 2, 4, 2, -1, 4], [1, -1, 3, 4, 1, 4], [1, 4, 3, 1, 6, 4, -1, 8, 10, 8, 13, 12, 10, 15, 13, 6, 15]]
-    # for s, dep in zip(sentences, head):
-    #     et = AST(s, dep, SEMANTICS)
-    #     print(et.res())
-
-    model = Jointer(None)
-    from dataset import HINT, HINT_collate
-    from torch.utils.data import DataLoader
-    from tqdm import tqdm
-    dataset = HINT('train')
-    data_loader = DataLoader(dataset, batch_size=32,
-                         shuffle=True, num_workers=4, collate_fn=HINT_collate)
-    model.train()
-    for sample in tqdm(data_loader):
-        # sample = next(iter(val_loader))
-        res = model.deduce(sample['img_seq'], sample['len'])
-        model.abduce(sample['res'], sample['img_paths'])
-        # print(len([1 for x, y in zip(res, sample['res']) if x is not None and x == y]), len(model.buffer))
-        # model.clear_buffer()
-        model.learn()
-    print(len(model.buffer))

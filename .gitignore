@@ -8,4 +8,4 @@ log.txt
 tmp/
 bak/
 wandb/
-data/
+datasets/

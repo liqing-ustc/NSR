@@ -1,9 +1,9 @@
-from utils import SYMBOLS, SYM2PROG
 from .semantics import DreamCoder, Semantics
 
 class SemanticsGT():
-    def __init__(self):
-        self.semantics = [Semantics(i, SYM2PROG[s], learnable=False) for i, s in enumerate(SYMBOLS)]
+    def __init__(self, config):
+        self.semantics = [Semantics(i, arity=config.domain.sym2arity[s], program=config.domain.sym2prog[s], learnable=False) 
+                    for i, s in enumerate(config.domain.i2w)]
 
     def __call__(self):
         return self.semantics
@@ -17,7 +17,7 @@ class SemanticsGT():
 
 def build(config=None):
     if config.semantics:
-        model = SemanticsGT()
+        model = SemanticsGT(config)
     else:
         model = DreamCoder(config)
     return model
