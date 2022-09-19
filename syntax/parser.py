@@ -261,14 +261,12 @@ class Parser(object):
         UAS /= all_tokens
         return UAS
 
-    def learn(self, dataset, n_iters=100):
+    def learn(self, dataset, n_epochs=1):
         if len(dataset) == 0:
             return
         train_data = self.create_instances([{'word': x.sentence, 'head': x.head} for x in dataset])
 
         batch_size = 1024
-        n_epochs = int(math.ceil(batch_size * n_iters / len(train_data)))
-        n_epochs = max(n_epochs, 5) # run at least 5 epochs
         print(n_epochs, "epochs, ", end='')
         self.model.train() # Places model in "train" mode, i.e. apply dropout layer
         for epoch in range(n_epochs):

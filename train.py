@@ -25,6 +25,9 @@ def parse_args():
     parser = argparse.ArgumentParser('Neural-Symbolic Recursive Machine')
     parser.add_argument('--wandb', type=str, default='NSR', help='the project name for wandb.')
     parser.add_argument('--dataset', default='hint', choices=['scan', 'pcfg', 'hint'], help='the dataset name.')
+    parser.add_argument('--split', default='simple',
+                        choices=['simple', 'length', 'addprim_jump', 'template_around_right'], 
+                        help='the split name.')
     parser.add_argument('--resume', type=str, default=None, help='Resumes training from checkpoint.')
     parser.add_argument('--perception_pretrain', type=str, help='initialize the perception from pretrained models.',
                         default='perception/pretrained_model/model_78.2.pth.tar')
@@ -48,7 +51,6 @@ def parse_args():
     parser.add_argument('--epochs_eval', type=int, default=10, help='how many epochs per evaluation')
 
     args = parser.parse_args()
-    args.wandb = args.wandb + '-' + args.dataset
     args.save_model = args.save_model == '1'
     args.curriculum = args.curriculum == '1'
     args.perception = args.perception == '1'
@@ -254,6 +256,7 @@ def train(model, args, st_epoch=0):
 if __name__ == "__main__":
     args = parse_args()
     sys.argv = sys.argv[:1]
+    os.makedirs(args.output_dir, exist_ok=True)
     wandb.init(project=args.wandb, dir=args.output_dir, config=vars(args))
     ckpt_dir = os.path.join(wandb.run.dir, '../ckpt')
     os.makedirs(ckpt_dir)

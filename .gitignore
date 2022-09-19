@@ -2,7 +2,7 @@
 .vscode/
 .ipynb_checkpoints/
 compressionMessages/
-outputs/
+outputs/*
 log.txt
 *.p
 tmp/

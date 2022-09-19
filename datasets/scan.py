@@ -114,9 +114,17 @@ class SCAN(Dataset):
     def __init__(self, split='train', name='length', n_sample=None):
 
         assert split in ['train', 'val', 'test']
-        if name == 'length':
-            split = 'test' if split == 'val' else split # there is no val split for scan
+        split = 'test' if split == 'val' else split # there is no val split for scan
+        if name in ['simple', 'length']:
             filename = f'./datasets/scan/{name}_split/tasks_{split}_{name}.txt'
+        elif name == 'addprim_jump':
+            filename = f'./datasets/scan/add_prim_split/tasks_{split}_{name}.txt'
+        elif name == 'addprim_turn_left':
+            filename = f'./datasets/scan/add_prim_split/tasks_{split}_{name}.txt'
+        elif name == 'template_around_right':
+            filename = f'./datasets/scan/template_split/tasks_{split}_{name}.txt'
+        else:
+            assert False, f'Unknown split for SCAN: {name}'
         
         dataset = self.load_data(filename)
 

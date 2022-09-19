@@ -11,10 +11,10 @@
 * PyTorch 1.7.0
 
 ## Getting started
-1. Download the [HINT](https://drive.google.com/file/d/1vYADnDuWuW2V5kixvGAGIo_Vh6DyCJrD/view?usp=sharing) dataset and Unzip it to the `data/` folder:
+1. Download the datasets
 ```
-cd data
-tar -xvf hint.tar.xz
+cd datasets
+./download.sh
 ```
 
 2. Download the pre-trained [ResNet-18](https://drive.google.com/file/d/1vDB88m50BMtcnyA8LOD7Uem2Q05nlg9q/view?usp=sharing) to the `data/perception-pretrain/` folder:

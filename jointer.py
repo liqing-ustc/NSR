@@ -406,10 +406,9 @@ class Jointer:
 
         elif self.learned_module == 'syntax':
             dataset = [x.pt for x in self.buffer if len(x.pt.sentence) > 1]
-            n_iters = int(100)
-            print("Learn syntax with %d samples for %d iterations, "%(len(dataset), n_iters), end='', flush=True)
+            print("Learn syntax with %d samples, "%(len(dataset)), end='', flush=True)
             st = time()
-            self.syntax.learn(dataset, n_iters=n_iters)
+            self.syntax.learn(dataset, n_epochs=5)
             print("take %d sec."%(time()-st))
 
         elif self.learned_module == 'semantics':
