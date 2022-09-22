@@ -8,9 +8,11 @@ parameters:
   dataset:
     value: scan
   split:
-    values: [addprim_jump, template_around_right] 
+    values: [length, addprim_jump, template_around_right, simple] 
   save_model:
     value: 1
+  curriculum:
+    value: 0
   perception:
     value: 1
   syntax:
@@ -22,5 +24,5 @@ parameters:
   epochs_eval:
     value: 10
   seed:
-    value: 0
-    # values: [0,1,2]
+    # value: 0
+    values: [0,1,2,3,4]
