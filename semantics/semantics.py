@@ -178,7 +178,7 @@ class Semantics(object):
 
     def __call__(self, inputs):
         inputs = tuple([x for x in inputs if x != EMPTY_VALUE])
-        if self.likelihood > 0.8:
+        if self.likelihood > 0.5:
             if isinstance(self.program, NULLProgram) and len(inputs) > 0:
                 return MISSING_VALUE
             return self.program(inputs)
