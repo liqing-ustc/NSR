@@ -131,6 +131,10 @@ class PCFG(Dataset):
             if split == 'val':
                 split = 'dev'
             filename = f'./datasets/pcfg/{name}/{split}'
+        elif name in ['systematicity', 'productivity']:
+            if split == 'val':
+                split = 'test'
+            filename = f'./datasets/pcfg/{name}/{split}'
         
         dataset = self.load_data(filename)
 

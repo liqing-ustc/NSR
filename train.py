@@ -26,7 +26,7 @@ def parse_args():
     parser.add_argument('--wandb', type=str, default='NSR', help='the project name for wandb.')
     parser.add_argument('--dataset', default='hint', choices=['scan', 'pcfg', 'hint'], help='the dataset name.')
     parser.add_argument('--split', default='simple',
-                        choices=['simple', 'length', 'addprim_jump', 'template_around_right'], 
+                        choices=['simple', 'length', 'addprim_jump', 'template_around_right', 'pcfgset', 'systematicity', 'productivity'], 
                         help='the split name.')
     parser.add_argument('--resume', type=str, default=None, help='Resumes training from checkpoint.')
     parser.add_argument('--perception_pretrain', type=str, help='initialize the perception from pretrained models.',

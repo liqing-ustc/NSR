@@ -1,0 +1,28 @@
+project: NSR
+program: train.py
+method: grid
+metric:
+  name: test/result_acc/avg
+  goal: maximize
+parameters:
+  dataset:
+    value: pcfg
+  split:
+    values: [pcfgset, systematicity, productivity] 
+  save_model:
+    value: 1
+  curriculum:
+    value: 0
+  perception:
+    value: 1
+  syntax:
+    value: 0 
+  semantics:
+    value: 0
+  epochs:
+    value: 100
+  epochs_eval:
+    value: 10
+  seed:
+    # value: 0
+    values: [0,1,2,3,4]
