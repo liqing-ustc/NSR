@@ -90,6 +90,7 @@ class NULLProgram(object):
         self.arity = 0
         self.fn = lambda: EMPTY_VALUE
         self.cache = {}
+        self.prog = 'NULL'
 
     def __call__(self, inputs):
         if len(inputs) != 0:
@@ -101,7 +102,7 @@ class NULLProgram(object):
         return ys
 
     def __str__(self):
-        return "NULL"
+        return str(self.prog)
 
     def solve(self, *args):
         return []

@@ -282,7 +282,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = Jointer(args)
     model.to(device)
-    if not args.fewshot and domain.perception_pretrain and not args.perception:
+    if not args.fewshot and getattr(domain, 'perception_pretrain', None) and not args.perception:
         model.perception.load({'model': torch.load(domain.perception_pretrain)}, image_encoder_only=True)
         model.perception.selflabel(args.train_set.all_exprs())
 

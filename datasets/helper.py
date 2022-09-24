@@ -13,7 +13,7 @@ class Program():
         self.arity = len(signature(fn).parameters) if fn is not None else 0
         self.likelihood = 1.0
         self.cache = {} # used for fast computation
-        self.prog = None
+        self.prog = 'GT'
 
     def __call__(self, inputs):
         if len(inputs) != self.arity or MISSING_VALUE in inputs:
@@ -34,7 +34,7 @@ class Program():
         return ys
 
     def __str__(self):
-        return "GT"
+        return str(self.prog)
 
     def solve(self, i, inputs, output_list):
         if len(inputs) != self.arity:
