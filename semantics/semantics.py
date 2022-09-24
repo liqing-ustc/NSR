@@ -61,7 +61,8 @@ class ProgramWrapper(object):
         # if self.y is not None and prog.y is not None:
         #     assert len(self.y) == len(prog.y) # the program should be evaluated on same examples
         #     return np.mean(self.y[self.y!=None] == prog.y[self.y!=None]) > 0.95
-        # return self.prog == prog.prog
+        if str(self.prog) != 'GT':
+            return str(self.prog) == str(prog.prog)
         return False
 
     def __str__(self):
@@ -183,8 +184,6 @@ class Semantics(object):
     def __call__(self, inputs):
         inputs = tuple([x for x in inputs if x != EMPTY_VALUE])
         if self.likelihood > 0.5:
-            if isinstance(self.program, NULLProgram) and len(inputs) > 0:
-                return MISSING_VALUE
             return self.program(inputs)
         elif inputs in self.cache:
             ys = self.cache[inputs]
@@ -254,6 +253,7 @@ class Semantics(object):
         self.program = NULLProgram()
         self.solved = False
         self.likelihood = 0.
+        self.cache = {}
     
     def save(self):
         model = {'idx': self.idx, 'solved': self.solved, 'likelihood': self.likelihood, 'arity': self.arity}
