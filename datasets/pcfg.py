@@ -48,6 +48,13 @@ class PCFG(Dataset):
     sym2learnable.update({x: True for x in unary_functions})
     sym2learnable.update({x: True for x in binary_functions})
 
+    curriculum = dict([
+            (0, 10),
+            (20, 20),
+            (40, float('inf')),
+    ])
+
+
     @classmethod
     def parse(cls, expr):
         sym2arity = cls.sym2arity

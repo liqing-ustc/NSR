@@ -1,5 +1,5 @@
 
-# from .perception import Perception
+from .perception import Perception
 
 class NULLPerception:
     def __init__(self):
@@ -22,4 +22,5 @@ class NULLPerception:
         pass
 
 def build(config):
-    return Perception() if not config.perception else NULLPerception()
+    model = Perception(config.domain) if not config.perception else NULLPerception()
+    return model

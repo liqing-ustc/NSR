@@ -85,7 +85,8 @@ class Node:
         self._res_computed = node._res_computed
 
 class AST: # Abstract Syntax Tree
-    def __init__(self, pt, semantics, sent_probs=None):
+    def __init__(self, pt, semantics, sent_probs=None, input=None):
+        self.input = input
         self.pt = pt
         self.semantics = semantics
         self.sent_probs = np.log(np.maximum(sent_probs, 1e-7))
@@ -336,7 +337,19 @@ class Jointer:
                 probs[range(l), sent] = 1
                 sent_probs.append(probs)
         else:
-            pass
+            img_seq = sample['img_seq']
+            img_seq = img_seq.to(self.perception.device)
+            symbols , probs = self.perception(img_seq, lengths)
+            symbols = symbols.detach().cpu().numpy()
+            probs = probs.detach().cpu().numpy()
+
+            sentences = []
+            sent_probs = []
+            current = 0
+            for l in lengths:
+                sentences.append(list(symbols[current:current+l]))
+                sent_probs.append(probs[current:current+l])
+                current += l
 
         semantics = self.semantics()
         self.ASTs = [None] * len(lengths)
@@ -359,7 +372,8 @@ class Jointer:
             
             tmp = []
             for i, pt in zip(unfinished, parses):
-                ast = AST(pt, semantics, sent_probs[i])
+                input = sample['input'][i] if 'input' in sample else None
+                ast = AST(pt, semantics, sent_probs[i], input)
                 if ast.res() is MISSING_VALUE or ast.res() is EMPTY_VALUE:
                     tmp.append(i)
                 if self.ASTs[i] is None or ast.res() is not MISSING_VALUE:
@@ -397,18 +411,17 @@ class Jointer:
             self.buffer = self.buffer + random.sample(self.buffer_augment, k=1000)
 
         if self.learned_module == 'perception':
-            dataset = [(x.img_paths, x.pt.sentence) for x in self.buffer]
-            n_iters = int(100)
-            print("Learn perception with %d samples for %d iterations, "%(len(self.buffer), n_iters), end='', flush=True)
+            dataset = [(x.input, x.pt.sentence) for x in self.buffer]
+            print("Learn perception with %d samples, "%(len(dataset)), end='', flush=True)
             st = time()
-            self.perception.learn(dataset, n_iters=n_iters)
+            self.perception.learn(dataset, n_epochs=5)
             print("take %d sec."%(time()-st))
 
         elif self.learned_module == 'syntax':
             dataset = [x.pt for x in self.buffer if len(x.pt.sentence) > 1]
             print("Learn syntax with %d samples, "%(len(dataset)), end='', flush=True)
             st = time()
-            self.syntax.learn(dataset, n_epochs=5)
+            self.syntax.learn(dataset, n_epochs=10)
             print("take %d sec."%(time()-st))
 
         elif self.learned_module == 'semantics':

@@ -1,7 +1,4 @@
 import sys
-sys.setrecursionlimit(int(1e4))
-sys.path.insert(0, "./semantics/dreamcoder")
-
 import random
 from collections import defaultdict, Counter 
 import json
@@ -11,6 +8,8 @@ import datetime
 import numpy as np
 import torch
 
+sys.setrecursionlimit(int(1e4))
+sys.path.insert(0, "./semantics/dreamcoder")
 from dreamcoder.dreamcoder import commandlineArguments, explorationCompression
 from dreamcoder.utilities import eprint, flatten, testTrainSplit, numberOfCPUs
 from dreamcoder.grammar import Grammar
@@ -19,8 +18,8 @@ from dreamcoder.type import Context, arrow, tbool, tlist, tint, t0, UnificationF
 from dreamcoder.recognition import RecurrentFeatureExtractor
 from dreamcoder.program import Program, Invented, Primitive
 from dreamcoder.frontier import Frontier, FrontierEntry
-
 from dreamcoder.domains.hint.main import list_options, LearnedFeatureExtractor
+from bin import hint
 
 from datasets import EMPTY_VALUE, MISSING_VALUE
 
@@ -106,14 +105,19 @@ class NULLProgram(object):
     def solve(self, *args):
         return []
 
-def compute_likelihood(program, examples=None):
+def compute_likelihood(program, examples=None, weighted_likelihood=False):
     if not examples:
         return 0., None
     else:
         pred = program.evaluate([e[0] for e in examples], store_y=False)
         gt = [e[1] for e in examples]
         res = [x == y for x, y in zip(pred, gt)]
-        return np.mean(res), np.array(res)
+        likehood = np.mean(res) 
+        if weighted_likelihood:
+            # adjust likelihood based on the number of examples and the arity
+            coef = min(1, len(examples) / 10**(program.arity - 1))
+            likehood *= coef
+        return likehood, np.array(res)
 
 class Semantics(object):
     def __init__(self, idx, arity, program=None, gt_program=None, fewshot=False, learnable=True):
@@ -150,7 +154,7 @@ class Semantics(object):
                 conf_examples.append((x, y))
         self.examples = conf_examples
 
-        self.likelihood, self.res = compute_likelihood(self.program, conf_examples)
+        self.likelihood, self.res = compute_likelihood(self.program, conf_examples, weighted_likelihood=True)
         self.check_solved()
 
         acc = compute_likelihood(self.gt_program, examples)[0]
@@ -159,7 +163,7 @@ class Semantics(object):
 
     def update_program(self, entry):
         program = ProgramWrapper(entry.program)
-        likelihood = compute_likelihood(program, self.examples)[0]
+        likelihood = compute_likelihood(program, self.examples, weighted_likelihood=True)[0]
         if (likelihood > self.likelihood) or \
             (likelihood == self.likelihood and len(str(program)) < len(str(self.program))):
             self.program = program
@@ -194,13 +198,15 @@ class Semantics(object):
         return MISSING_VALUE
 
     def make_task(self):
-        min_examples = 1 
-        min_examples = min_examples if not self.fewshot else 0
+        min_examples = 1
         max_examples = 100
         examples = self.examples
         if len(examples) < min_examples or self.solved or not self.learnable:
             return None
-        task_type = arrow(*([tlist(tint)]*(self.arity + 1)))
+        data_type = type(examples[0][1])
+        assert data_type in [int, tuple, list], "Unknown data type."
+        data_type = tint if data_type is int else tlist(tint)
+        task_type = arrow(*([data_type]*(self.arity + 1)))
         if len(examples) > max_examples:
             wrong_examples = [e for e, r in zip(examples, self.res) if not r]
             right_examples = [e for e, r in zip(examples, self.res) if r]
@@ -229,10 +235,15 @@ class Semantics(object):
             if y in output_list and equal(xs, inputs, i):
                 candidates.append(xs[i])
         
-        # test if we can reach the target by make it an empty list
+        # test if we can reach the target by make it an empty list or empty value
         inputs = inputs[:]
-        empty = ()
-        inputs[i] = empty
+        data_type = type(output_list[0])
+        if data_type is int:
+            empty = EMPTY_VALUE
+            inputs = inputs[:i] + inputs[i+1:]
+        else:
+            empty = ()
+            inputs[i] = empty
         if self(inputs) in output_list:
             candidates.append(empty)
 
@@ -381,7 +392,8 @@ class DreamCoder(object):
             self._print_semantics()
             return 
         self._print_tasks(tasks)
-        # self.update_grammar()
+        if getattr(self.config.domain, "update_grammar", False):
+            self.update_grammar()
         print(self.grammar)
         # print(self.allFrontiers)
         # self.rescore_frontiers(tasks)
@@ -419,12 +431,12 @@ class DreamCoder(object):
                 # it might be resolved by increasing the enumeration time
                 continue
             if smt.learnable and smt.solved and smt.arity == 2:
-                add = ProgramWrapper(hintPrimitives.add)
-                minus0 = ProgramWrapper(hintPrimitives.minus0)
-                if np.all([add(*x) == smt.program(*x) for x, y in smt.examples]):
-                    new_primitives.append(hintPrimitives.add)
-                elif np.all([minus0(*x) == smt.program(*x) for x, y in smt.examples]):
-                    new_primitives.append(hintPrimitives.minus0)
+                add = ProgramWrapper(hint.add)
+                minus0 = ProgramWrapper(hint.minus0)
+                if np.all([smt.program(x) in [add(x), MISSING_VALUE] for x, y in smt.examples]):
+                    new_primitives.append(hint.add)
+                elif np.all([smt.program(x) in [minus0(x), MISSING_VALUE] for x, y in smt.examples]):
+                    new_primitives.append(hint.minus0)
                 else:
                     new_primitives.append(Invented(smt.program.prog))
 

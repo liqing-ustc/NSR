@@ -52,6 +52,12 @@ class SCAN(Dataset):
     sym2arity = {k: v.arity for k, v in sym2prog.items()}
 
     sym2learnable = {x: True for x in vocab}
+    curriculum = dict([
+            (0, 10),
+            (20, 20),
+            (40, float('inf')),
+    ])
+
 
     @classmethod
     def parse(cls, expr):

@@ -29,8 +29,6 @@ def parse_args():
                         choices=['simple', 'length', 'addprim_jump', 'template_around_right', 'pcfgset', 'systematicity', 'productivity'], 
                         help='the split name.')
     parser.add_argument('--resume', type=str, default=None, help='Resumes training from checkpoint.')
-    parser.add_argument('--perception_pretrain', type=str, help='initialize the perception from pretrained models.',
-                        default='perception/pretrained_model/model_78.2.pth.tar')
     parser.add_argument('--output_dir', type=str, default='outputs/', help='output directory for storing checkpoints')
     parser.add_argument('--save_model', default='1', choices=['0', '1'])
     parser.add_argument('--seed', type=int, default=0, help="Random seed.")
@@ -54,6 +52,8 @@ def parse_args():
     args.save_model = args.save_model == '1'
     args.curriculum = args.curriculum == '1'
     args.perception = args.perception == '1'
+    if args.dataset == 'hint':
+        args.split = 'symbol' if args.perception else 'image'
     args.syntax = args.syntax == '1'
     args.semantics = args.semantics == '1'
     args.Y_combinator = args.Y_combinator == '1'
@@ -145,20 +145,14 @@ def train(model, args, st_epoch=0):
     
     max_len = float("inf")
     if args.curriculum:
-        curriculum_strategy = dict([
-            # (0, 7)
-            # (0, 3),
-            (0, 10),
-            (20, 20),
-            (40, float('inf')),
-        ])
+        curriculum_strategy = args.domain.curriculum
         print("Curriculum:", sorted(curriculum_strategy.items()))
         for e, l in sorted(curriculum_strategy.items(), reverse=True):
             if st_epoch >= e:
                 max_len = l
                 break
-        train_set.filter_by_len(max_len=max_len)
-        train_dataloader = torch.utils.data.DataLoader(train_set, batch_size=batch_size,
+        args.train_set.filter_by_len(max_len=max_len)
+        train_dataloader = torch.utils.data.DataLoader(args.train_set, batch_size=batch_size,
                             shuffle=True, num_workers=4, collate_fn=args.domain.collate)
     
     ##########evaluate init model###########
@@ -169,15 +163,15 @@ def train(model, args, st_epoch=0):
     for epoch in range(st_epoch, args.epochs):
         if args.curriculum and epoch in curriculum_strategy:
             max_len = curriculum_strategy[epoch]
-            train_set.filter_by_len(max_len=max_len)
-            train_dataloader = torch.utils.data.DataLoader(train_set, batch_size=batch_size,
+            args.train_set.filter_by_len(max_len=max_len)
+            train_dataloader = torch.utils.data.DataLoader(args.train_set, batch_size=batch_size,
                                 shuffle=True, num_workers=4, collate_fn=args.domain.collate)
             if len(train_dataloader) == 0:
                 continue
 
         since = time.time()
         print('-' * 30)
-        print('Epoch {}/{} (max_len={}, data={})'.format(epoch, args.epochs - 1, max_len, len(train_set)))
+        print('Epoch {}/{} (max_len={}, data={})'.format(epoch, args.epochs - 1, max_len, len(args.train_set)))
 
         for _ in range(len(model.learning_schedule)):
             with torch.no_grad():
@@ -269,14 +263,17 @@ if __name__ == "__main__":
 
     domain = get_dataset(args.dataset)
     args.domain = domain
-    model = Jointer(args)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model.to(device)
+    args.train_set = domain('train', n_sample=args.train_size)
+    args.val_set = domain('val')
+    args.test_set = domain('test')
+    print('train:', len(args.train_set), 'val:', len(args.val_set), 'test:', len(args.test_set))
 
-    train_set = domain('train', n_sample=args.train_size)
-    val_set = domain('val')
-    test_set = domain('test')
-    print('train:', len(train_set), 'val:', len(val_set), 'test:', len(test_set))
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = Jointer(args)
+    model.to(device)
+    if not args.fewshot and domain.perception_pretrain and not args.perception:
+        model.perception.load({'model': torch.load(domain.perception_pretrain)}, image_encoder_only=True)
+        model.perception.selflabel(args.train_set.all_exprs())
 
     st_epoch = 0
     if args.resume:
@@ -286,11 +283,7 @@ if __name__ == "__main__":
 
 
     model.print()
-    wandb.log({'train_examples': len(train_set)})
-
-    args.train_set = train_set
-    args.val_set = val_set
-    args.test_set = test_set
+    wandb.log({'train_examples': len(args.train_set)})
 
     train(model, args, st_epoch=st_epoch)
 
