@@ -117,8 +117,8 @@ def compute_likelihood(program, examples=None, weighted_likelihood=False):
         likehood = np.mean(res) 
         if weighted_likelihood:
             # adjust likelihood based on the number of examples and the arity
-            coef = min(1, len(examples) / 10**(program.arity - 1))
-            likehood *= coef
+            coef = max(1, 10 * program.arity / len(examples))
+            likehood /= coef
         return likehood, np.array(res)
 
 class Semantics(object):
