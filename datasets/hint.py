@@ -61,6 +61,8 @@ class HINT(Dataset):
     update_grammar = True # whether to update grammar when learning semantics
     enforce_arity_parsing = False # do not enforce the arity constraint for parsing because parentheses has no output.
 
+    # track the evaluation results by following attributes.
+    tracked_attrs = ['length', 'symbol', 'digit', 'result', 'eval', 'tree_depth', 'ps_depth']
 
     @classmethod
     def parse(cls, expr):
@@ -210,6 +212,186 @@ class HINT(Dataset):
         dataset = random.sample(self.dataset, min(int(1e4), len(self.dataset)))
         dataset = [sample for sample in dataset if len(sample['expr']) <= max_len]
         return dataset
+
+    @property
+    def max_dep2ids(self):
+        """max dependency distance."""
+        if hasattr(self, '_max_dep2ids'):
+            return self._max_dep2ids
+        else:
+            def compute_max_dep(heads):
+                return max([0] + [abs(i-h) for i, h in enumerate(heads) if h != -1])
+
+            def sample2key(sample):
+                return compute_max_dep(sample['head'])
+
+            mapping = {}
+            for i, x in enumerate(self.dataset):
+                k = sample2key(x)
+                if k not in mapping:
+                    mapping[k] = []
+                mapping[k].append(i)
+            self._max_dep2ids = mapping
+            return mapping
+
+    @property
+    def ps_depth2ids(self):
+        """parenthesis depth."""
+        if hasattr(self, '_ps_depth2ids'):
+            return self._ps_depth2ids
+        else:
+            lps = '('
+            rps = ')'
+            def compute_ps_depth(expr):
+                depth = 0
+                max_depth = 0
+                for x in expr:
+                    if x == lps:
+                        c = 1
+                    elif x == rps:
+                        c = -1
+                    else:
+                        c = 0
+                    depth += c
+                    if depth > max_depth:
+                        max_depth = depth
+                return max_depth
+
+            def sample2key(sample):
+                return compute_ps_depth(sample['expr'])
+
+            mapping = {}
+            for i, x in enumerate(self.dataset):
+                k = sample2key(x)
+                if k not in mapping:
+                    mapping[k] = []
+                mapping[k].append(i)
+            self._ps_depth2ids = mapping
+            return mapping
+
+
+    @property
+    def tree_depth2ids(self):
+        if hasattr(self, '_tree_depth2ids'):
+            return self._tree_depth2ids
+        else:
+            from functools import lru_cache
+            def compute_tree_depth(head):
+                @lru_cache()
+                def depth(i):
+                    """The depth of node i."""
+                    if head[i] == -1:
+                        return 1
+                    return depth(head[i]) + 1
+                
+                return max(depth(i) for i in range(len(head)))
+
+            def sample2key(sample):
+                return compute_tree_depth(sample['head'])
+
+            mapping = {}
+            for i, x in enumerate(self.dataset):
+                k = sample2key(x)
+                if k not in mapping:
+                    mapping[k] = []
+                mapping[k].append(i)
+            self._tree_depth2ids = mapping
+            return mapping
+    
+    @property
+    def eval2ids(self):
+        if hasattr(self, '_eval2ids'):
+            return self._eval2ids
+        else:
+            def sample2key(sample):
+                return sample['eval']
+
+            mapping = {}
+            for i, x in enumerate(self.dataset):
+                k = sample2key(x)
+                if k not in mapping:
+                    mapping[k] = []
+                mapping[k].append(i)
+            self._eval2ids = mapping
+            return mapping
+
+    @property
+    def digit2ids(self):
+        if hasattr(self, '_digit2ids'):
+            return self._digit2ids
+        else:
+            def sample2key(sample):
+                if len(sample['expr']) == 1:
+                    return sample['expr'][0]
+                return None
+
+            mapping = {}
+            for i, x in enumerate(self.dataset):
+                k = sample2key(x)
+                if not k:
+                    continue
+                if k not in mapping:
+                    mapping[k] = []
+                mapping[k].append(i)
+            self._digit2ids = mapping
+            return mapping
+
+    @property
+    def result2ids(self):
+        if hasattr(self, '_result2ids'):
+            return self._result2ids
+        else:
+            def sample2key(sample):
+                r = sample['res']
+                if r < 10:
+                    return r
+                r = (r // 10) * 10
+                r = min(r, 100)
+                return r
+
+            mapping = {}
+            for i, x in enumerate(self.dataset):
+                k = sample2key(x)
+                if k not in mapping:
+                    mapping[k] = []
+                mapping[k].append(i)
+            self._result2ids = mapping
+            return mapping
+
+    @property
+    def length2ids(self):
+        if hasattr(self, '_length2ids'):
+            return self._length2ids
+        else:
+            def sample2key(sample):
+                return len(sample['img_paths'])
+
+            mapping = {}
+            for i, x in enumerate(self.dataset):
+                k = sample2key(x)
+                if k not in mapping:
+                    mapping[k] = []
+                mapping[k].append(i)
+            self._length2ids = mapping
+            return mapping
+
+    @property
+    def symbol2ids(self):
+        if hasattr(self, '_symbol2ids'):
+            return self._symbol2ids
+        else:
+            def sample2key(sample):
+                return list(set(sample['expr']))
+
+            mapping = {}
+            for i, x in enumerate(self.dataset):
+                k_list = sample2key(x)
+                for k in k_list:
+                    if k not in mapping:
+                        mapping[k] = []
+                    mapping[k].append(i)
+            self._symbol2ids = mapping
+            return mapping
     
     @classmethod
     def collate(cls, batch):

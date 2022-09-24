@@ -110,6 +110,17 @@ def evaluate(model, dataloader, n_steps=1, log_prefix='val'):
     gt = [y for x in dep_all for y in x]
     head_acc = np.mean(np.array(pred) == np.array(gt))
 
+    tracked_attrs = getattr(dataloader.dataset, 'tracked_attrs', [])
+    for attr in tracked_attrs:
+        # print(f"result accuracy by {attr}:")
+        attr2ids = getattr(dataloader.dataset, f'{attr}2ids')
+        for k, ids in sorted(attr2ids.items()):
+            gt = [res_all[i] for i in ids]
+            pred = [res_pred_all[i] for i in ids]
+            acc = np.mean([x == y  for x, y in zip(pred, gt)]) if ids else 0.
+            k = 'div' if k == '/' else k
+            metrics[f'result_acc/{attr}/{k}'] = acc
+
     metrics['result_acc/avg'] = result_acc
     metrics['perception_acc/avg'] = perception_acc
     metrics['head_acc/avg'] = head_acc
