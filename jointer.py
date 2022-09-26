@@ -414,7 +414,7 @@ class Jointer:
             dataset = [(x.input, x.pt.sentence) for x in self.buffer]
             print("Learn perception with %d samples, "%(len(dataset)), end='', flush=True)
             st = time()
-            self.perception.learn(dataset, n_epochs=5)
+            self.perception.learn(dataset, n_epochs=1)
             print("take %d sec."%(time()-st))
 
         elif self.learned_module == 'syntax':
