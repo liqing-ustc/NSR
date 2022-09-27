@@ -9,3 +9,4 @@ tmp/
 bak/
 wandb/
 datasets/
+analysis/models
