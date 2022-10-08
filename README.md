@@ -1,8 +1,8 @@
-# A HINT from Arithmetic: On Systematic Generalization of Perception, Syntax, and Semantics
+# Neural-Symbolic Recursive Machine for Systematic Generalization
 
-<div align="center">
+<!-- <div align="center">
   <img src="ans.png" width="750px">
-</div>
+</div> -->
 
 ## Prerequisites
 * Ubuntu 20.04
@@ -28,24 +28,3 @@ conda create -y -n ans python=3.6
 source activate ans
 pip install -r requirements.txt
 ```
-
-## Train a single model
-Train the proposed ANS model by running following
-```
-python train.py --curriculum
-```
-
-## Experiments
-Training logs for all models are in the <a href = "/experiments">experiments</a> folder and run the following scripts to reproduce the results:
-```
-./run_0.sh
-./run_1.sh
-./run_2.sh
-./run_fs.sh
-```
-These scripts will train different model variants and save the training logs into the `outputs` directory.
-
-## Visualization
-1. Download the trained [model](https://drive.google.com/file/d/1B_4R--hfdjtmmlEGKrC4ZW5PrzT-fOp4/view?usp=sharing) to the foler `experiments/`.
-2. Run `visualize.ipynb` to visualize the model predictions.
-
