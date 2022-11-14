@@ -24,7 +24,7 @@ import os
 def parse_args():
     parser = argparse.ArgumentParser('Neural-Symbolic Recursive Machine')
     parser.add_argument('--wandb', type=str, default='NSR', help='the project name for wandb.')
-    parser.add_argument('--dataset', default='hint', choices=['scan', 'pcfg', 'hint'], help='the dataset name.')
+    parser.add_argument('--dataset', default='hint', choices=['scan', 'pcfg', 'hint', 'mt'], help='the dataset name.')
     parser.add_argument('--split', default='simple',
                         choices=['simple', 'length', 'addprim_jump', 'template_around_right', 'pcfgset', 'systematicity', 'productivity'], 
                         help='the split name.')
