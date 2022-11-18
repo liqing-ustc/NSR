@@ -24,7 +24,27 @@ cd datasets
 
 4. Create an environment and install all packages from `requirements.txt`:
 ```
-conda create -y -n ans python=3.6
-source activate ans
+conda create -y -n nsr python=3.6
+source activate nsr
 pip install -r requirements.txt
 ```
+
+5. Run experiments on :
+```
+python run_sweep.py sweeps/[DATASET].yaml
+```
+
+## Usage
+The code uses Weights &  Biases for experiment tracking. In the [sweeps](./sweeps/) directory, we provide sweep configurations for all experiments we have performed. The sweeps are officially meant for hyperparameter optimization, but we use them to run multiple configurations and seeds.
+
+To reproduce our results, start a sweep for each of the YAML files in the [sweeps](./sweeps/) directory.
+
+
+For example,run the experiments on the SCAN dataset: 
+```
+./run_sweep.py sweeps/scan.yaml --n_agent 3 --gpus=0,1,2
+```
+
+You can change the number of sweep agents and GPUs used, according to your computing resource.
+
+More details on how to run W&B sweeps can be found at https://docs.wandb.com/sweeps/quickstart.

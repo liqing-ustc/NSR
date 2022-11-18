@@ -122,10 +122,10 @@ def compute_likelihood(program, examples=None, weighted_likelihood=False):
         return likehood, np.array(res)
 
 class Semantics(object):
-    def __init__(self, idx, arity, program=None, gt_program=None, fewshot=False, learnable=True):
+    def __init__(self, idx, arity, program, gt_program=None, fewshot=False, learnable=True):
         self.idx = idx
         self.examples = []
-        self.program = program or NULLProgram()
+        self.program = program
         self.gt_program = gt_program
         self.arity = arity
         self.solved = False
@@ -266,7 +266,8 @@ class Semantics(object):
         self.solved = model['solved']
         self.likelihood = model['likelihood']
         self.arity = model['arity']
-        self.program = NULLProgram() if model['program'] is None else ProgramWrapper(model['program'])
+        if self.learnable:
+            self.program = ProgramWrapper(model['program'])
 
 class DreamCoder(object):
     def __init__(self, config=None):
@@ -318,7 +319,7 @@ class DreamCoder(object):
             arity = domain.sym2arity[s]
             gt_prog = domain.sym2prog[s]
             learnable = domain.sym2learnable[s]
-            smt = Semantics(i, arity, learnable=learnable, program=None if learnable else gt_prog, gt_program=gt_prog)
+            smt = Semantics(i, arity, learnable=learnable, program=NULLProgram() if learnable else gt_prog, gt_program=gt_prog)
             self.semantics.append(smt)
         self.allFrontiers = None
         self.helmholtzFrontiers = None
