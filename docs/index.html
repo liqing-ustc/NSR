@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="description"
-        content="HINT: A Minimalist Dataset for Systematic Generalization of Perception, Syntax, and Semantics.">
+        content="Neural-Symbolic Recursive Machine for Systematic Generalization.">
   <meta name="keywords" content="HINT">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>HINT: A Minimalist Dataset for Systematic Generalization of Perception, Syntax, and Semantics.</title>
+  <title>Neural-Symbolic Recursive Machine for Systematic Generalization.</title>
 
   <!-- Global site tag (gtag.js) - Google Analytics -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-PYVRSFMDRL"></script>
@@ -42,20 +42,50 @@
 </head>
 <body>
 
+<nav class="navbar" role="navigation" aria-label="main navigation">
+  <div class="navbar-brand">
+    <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false">
+      <span aria-hidden="true"></span>
+      <span aria-hidden="true"></span>
+      <span aria-hidden="true"></span>
+    </a>
+  </div>
+  <div class="navbar-menu">
+    <div class="navbar-start" style="flex-grow: 1; justify-content: center;">
+      <a class="navbar-item" target="_blank" href="https://siyuanhuang.com/">
+        <span class="icon">
+          <i class="fas fa-home"></i>
+        </span>
+      </a>
+
+      <div class="navbar-item has-dropdown is-hoverable">
+        <a class="navbar-link">
+        More Research
+        </a>
+        <div class="navbar-dropdown">
+        <a class="navbar-item" target="_blank" href="https://liqing-ustc.github.io/HINT">
+            HINT
+        </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav>
+  
 <section class="hero">
   <div class="hero-body">
     <div class="container is-max-desktop">
       <div class="columns is-centered">
         <div class="column has-text-centered">
-          <h1 class="title is-2 publication-title">A Minimalist Dataset for Systematic Generalization of Perception, Syntax, and Semantics</h1>
+          <h1 class="title is-2 publication-title">Neural-Symbolic Recursive Machine for Systematic Generalization</h1>
           <div class="is-size-5 publication-authors">
             <span class="author-block">
               <a href="https://liqing-ustc.github.io/">Qing Li</a><sup>1</sup> &nbsp;&nbsp;&nbsp;
-              <a href="https://siyuanhuang.com/">Siyuan Huang</a><sup>1</sup> &nbsp;&nbsp;&nbsp;
-              <a href="https://evelinehong.github.io/">Yining Hong</a><sup>2</sup> &nbsp;&nbsp;&nbsp;
-              <a href="https://yzhu.io/">Yixin Zhu</a><sup>1,4</sup> &nbsp;&nbsp;&nbsp;
+              <a href="https://yzhu.io/">Yixin Zhu</a><sup>3</sup> &nbsp;&nbsp;&nbsp;
+              <a href="https://web.cs.ucla.edu/~yliang/">Yitao Liang</a><sup>1,3</sup> &nbsp;&nbsp;&nbsp;
               <a href="http://www.stat.ucla.edu/~ywu/">Ying Nian Wu</a><sup>2</sup> &nbsp;&nbsp;&nbsp;
-              <a href="http://www.stat.ucla.edu/~sczhu/">Song-Chun Zhu</a><sup>1,2,3,4</sup> &nbsp;&nbsp;&nbsp;
+              <a href="http://www.stat.ucla.edu/~sczhu/">Song-Chun Zhu</a><sup>1,3</sup> &nbsp;&nbsp;&nbsp;
+              <a href="https://siyuanhuang.com/">Siyuan Huang</a><sup>1</sup> &nbsp;&nbsp;&nbsp;
             </span>
           </div>
 
@@ -63,15 +93,14 @@
             <!-- <span class="author-block">✉️ corresponding author</span> <br> -->
             <span class="author-block"><sup>1</sup>Beijing Institute for General Artificial Intelligence (BIGAI)</span> &nbsp;&nbsp;&nbsp;<br>
             <span class="author-block"><sup>2</sup>UCLA</span> &nbsp;&nbsp;&nbsp;
-            <span class="author-block"><sup>3</sup>Tsinghua University</span> &nbsp;&nbsp;&nbsp;
-            <span class="author-block"><sup>4</sup>Peking University</span> &nbsp;&nbsp;&nbsp;
+            <span class="author-block"><sup>3</sup>Peking University</span> &nbsp;&nbsp;&nbsp;
           </div>
 
           <div class="column has-text-centered">
             <div class="publication-links">
               <!-- PDF Link. -->
               <span class="link-block">
-                <a href="https://arxiv.org/abs/2103.01403"
+                <a href="https://arxiv.org/abs/2210.01603"
                    class="external-link button is-normal is-rounded is-dark">
                   <span class="icon">
                       <i class="fas fa-file-pdf"></i>
@@ -100,7 +129,7 @@
               </span> -->
               <!-- Code Link. -->
               <span class="link-block">
-                <a href="https://github.com/liqing-ustc/HINT"
+                <a href="https://github.com/liqing-ustc/NSR"
                    class="external-link button is-normal is-rounded is-dark">
                   <span class="icon">
                       <i class="fab fa-github"></i>
@@ -108,16 +137,6 @@
                   <span>Code</span>
                   </a>
               </span>
-              <!-- Dataset Link. -->
-              <span class="link-block">
-                <a href="https://github.com/liqing-ustc/HINT/raw/master/data/dataset.tar.xz"
-                   class="external-link button is-normal is-rounded is-dark">
-                  <span class="icon">
-                      <i class="fas fa-database"></i>
-                  </span>
-                  <span>Dataset</span>
-                </a>
-                  </a>
             </div>
           </div>
 
@@ -132,7 +151,7 @@
   <div class="container is-max-desktop">
     <div class="hero-body">
       <h2 class="subtitle has-text-justified">
-        <b>TL;DR:</b> We take inspiration from arithmetic and present <b>HINT</b>, a new benchmark for studying systematic generalization of perception, syntax, and semantics.
+        <b>TL;DR:</b> We present Neural-Symbolic Recursive Machine for systematic generalization, which achieves state-of-the-art performance on SCAN, PCFG, and HINT.
       </h2>
       <img src="file/hint.png"/>
     </div>
@@ -148,10 +167,7 @@
         <h2 class="title is-3">Abstract</h2>
         <div class="content has-text-justified">
           <p>
-            Inspired by humans' exceptional ability to master arithmetic and generalize to new problems, we present a new dataset, HINT, to examine machines' capability of learning generalizable concepts at three levels: perception, syntax, and semantics. In HINT, machines are tasked with learning how concepts are perceived from raw signals such as images (i.e., perception), how multiple concepts are structurally combined to form a valid expression (i.e., syntax), and how concepts are realized to afford various reasoning tasks (i.e., semantics), all in a weakly supervised manner. Focusing on systematic generalization, we carefully design a five-fold test set to evaluate both the interpolation and the extrapolation of learned concepts w.r.t the three levels. Further, we design a few-shot learning split to determine whether or not models can rapidly learn new concepts and generalize them to more complex scenarios. 
-          </p>
-          <p>
-            To comprehend existing models' limitations, we undertake extensive experiments with various sequence-to-sequence models, including RNNs, Transformers, and GPT-3 (with the chain of thought prompting). The results indicate that current models struggle to extrapolate to long-range syntactic dependency and semantics. Models exhibit a considerable gap toward human-level generalization when evaluated with new concepts in a few-shot setting. Moreover, we discover that it is infeasible to solve HINT by merely scaling up the dataset and the model size; this strategy contributes little to the extrapolation of syntax and semantics. Finally, in zero-shot GPT-3 experiments, the chain of thought prompting exhibits impressive results and significantly boosts the test accuracy. We believe the HINT dataset and the experimental findings are of great interest to the learning community on systematic generalization.
+            Current learning models often struggle with human-like systematic generalization, particularly in learning compositional rules from limited data and extrapolating them to novel combinations. We introduce the Neural-Symbolic Recursive Machine (NSR), whose core is a Grounded Symbol System (GSS), allowing for the emergence of combinatorial syntax and semantics directly from training data. The NSR employs a modular design that integrates neural perception, syntactic parsing, and semantic reasoning. These components are synergistically trained through a novel deduction-abduction algorithm. Our findings demonstrate that NSR’s design, imbued with the inductive biases of equivariance and compositionality, grants it the expressiveness to adeptly handle diverse sequence-to-sequence tasks and achieve unparalleled systematic generalization. We evaluate NSR’s efficacy across four challenging benchmarks designed to probe systematic generalization capabilities: SCAN for semantic parsing, PCFG for string manipulation, HINT for arithmetic reasoning, and a compositional machine translation task. The results affirm NSR’s superiority over contemporary neural and hybrid models in terms of generalization and transferability.
           </p>
         </div>
       </div>
@@ -170,14 +186,6 @@
     </div> -->
     <!--/ Paper video. -->
 
-    <!-- Experiments. -->
-    <div class="columns is-centered has-text-centered">
-      <div class="column">
-        <h2 class="title is-3">Experiments</h2>
-        <iframe src="https://wandb.ai/qli/HINT/reports/HINT-experimental-report--VmlldzoyMDgyOTM2" style="border:none;height:1024px;width:100%"></iframe>
-      </div>
-    </div>
-    <!--/ Experiments. -->
 
   </div>
 </section>
@@ -185,11 +193,11 @@
 <section class="section" id="BibTeX">
   <div class="container is-max-desktop content">
     <h2 class="title">BibTeX</h2>
-    <pre><code>@inproceedings{li2023hint,
-    title={A Minimalist Dataset for Systematic Generalization of Perception, Syntax, and Semantics},
-    author={Li, Qing and Huang, Siyuan and Hong, Yining and Zhu, Yixin and Wu, Ying Nian and Zhu, Song-Chun},
+    <pre><code>@inproceedings{li2024nsr,
+    title={Neural-Symbolic Recursive Machine for Systematic Generalization},
+    author={Li, Qing and Zhu, Yixin and Liang, Yitao and Wu, Ying Nian and Zhu, Song-Chun and Huang, Siyuan},
     booktitle={International Conference on Learning Representations (ICLR)},
-    year={2023}
+    year={2024}
 }</code></pre>
   </div>
 </section>
